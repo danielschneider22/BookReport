@@ -8,7 +8,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "babel src --extensions \".ts\" --out-dir dist",
+    "build": "npx tsc && node dist/app.js",
     "start": "npx tsc && node dist/app.js",
     "register": "node commands.js",
     "dev": "nodemon app.js"

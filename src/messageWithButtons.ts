@@ -24,30 +24,73 @@ const choices: Choice = {
     fish: [],
 };
 
-client.once(Events.ClientReady, () => {
-    // cron.schedule(
-    //     '00 15 * * 2', // Should run Tuesdays at 12
-    //     () => { makeEvent() },
-    //     { timezone: TIMEZONE }
-    //   );
-    cron.schedule(
-        '* * * * *', // Should run Tuesdays at 12
-        () => { makeEvent() },
-        { timezone: TIMEZONE }
-    );
+// client.once(Events.ClientReady, () => {
+//     // cron.schedule(
+//     //     '00 15 * * 2', // Should run Tuesdays at 12
+//     //     () => { makeEvent() },
+//     //     { timezone: TIMEZONE }
+//     //   );
+//     makeEvent();
+//     cron.schedule(
+//         '* * * * *', // Should run Tuesdays at 12
+//         () => { makeEvent() },
+//         { timezone: TIMEZONE }
+//     );
     
-});
+// });
 
-function makeEvent() {
+export async function makeEvent() {
+    await client.login(process.env.DISCORD_TOKEN);
+    if(client.channels.cache.get(CHANNEL_ID)) {
+        console.log("rerrer");
+        console.log(!!client)
+        // Post the initial message with buttons
+        const channel = client.channels.cache.get(CHANNEL_ID);
+        console.log("GOT HERE");
+        console.log(!!channel);
+        console.log(!!client.channels);
+        console.log(!!client.channels.cache);
+        console.log(CHANNEL_ID);
+        if (channel && channel.isTextBased()) {
+            console.log("Banana");
+            await channel.send({
+                content: 'Choose your favorite:',
+                components: [createActionRow()]
+            });
+            console.log("WHYYYYYYY");
+        }
+        return true;
+    }
+    const waitForReady = new Promise<void>(resolve => {
+        client.on('ready', () => {
+            console.log("SDFSDF");
+            resolve(); // Resolve the promise when 'ready' event occurs
+        });
+    });
+    console.log("hsdasdgh");
+    
+    // Wait for both client.login() and 'ready' event
+    await waitForReady;
+
     console.log("rerrer");
+    console.log(!!client)
     // Post the initial message with buttons
     const channel = client.channels.cache.get(CHANNEL_ID);
+    console.log("GOT HERE");
+    console.log(!!channel);
+    console.log(!!client.channels);
+    console.log(!!client.channels.cache);
+    console.log(CHANNEL_ID);
     if (channel && channel.isTextBased()) {
-        channel.send({
+        console.log("Banana");
+        await channel.send({
             content: 'Choose your favorite:',
             components: [createActionRow()]
         });
-    } 
+        console.log("WHYYYYYYY");
+    }
+    return true;
+    
 }
 
 export async function processButton(username: string, choice: keyof Choice, messageId: string) {
@@ -105,5 +148,3 @@ function generateEmbed() {
         )
         .setColor(0x00AE86);
 }
-
-client.login(process.env.DISCORD_BOT_TOKEN);
