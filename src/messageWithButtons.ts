@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, EmbedBuilder, ButtonInteraction } from 'discord.js';
 import { config } from 'dotenv';
+import cron from 'node-cron';
 config();
 
 const client = new Client({
@@ -11,8 +12,8 @@ const client = new Client({
   });
 
 const CHANNEL_ID = process.env.CHANNEL_ID as string; // Add your channel ID to .env
+const TIMEZONE = 'UTC'; // Add your timezone to .env
 
-  
 interface Choice {
     kangaroo: string[];
     fish: string[];
@@ -24,6 +25,21 @@ const choices: Choice = {
 };
 
 client.once(Events.ClientReady, () => {
+    // cron.schedule(
+    //     '00 15 * * 2', // Should run Tuesdays at 12
+    //     () => { makeEvent() },
+    //     { timezone: TIMEZONE }
+    //   );
+    cron.schedule(
+        '* * * * *', // Should run Tuesdays at 12
+        () => { makeEvent() },
+        { timezone: TIMEZONE }
+    );
+    
+});
+
+function makeEvent() {
+    console.log("rerrer");
     // Post the initial message with buttons
     const channel = client.channels.cache.get(CHANNEL_ID);
     if (channel && channel.isTextBased()) {
@@ -31,8 +47,8 @@ client.once(Events.ClientReady, () => {
             content: 'Choose your favorite:',
             components: [createActionRow()]
         });
-    }
-});
+    } 
+}
 
 export async function processButton(username: string, choice: keyof Choice, messageId: string) {
     // Remove user from all choices
