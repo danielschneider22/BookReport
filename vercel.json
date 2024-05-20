@@ -15,7 +15,7 @@
     "crons": [
         {
             "path": "/cronTask",
-            "schedule": "21 02 * * 1"
+            "schedule": "00 15 * * 2"
         }
     ]
   }

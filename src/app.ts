@@ -30,6 +30,10 @@ app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY as st
 // Store for in-progress games. In production, you'd want to use a DB
 const activeGames: Record<string, ActiveGame> = {};
 
+app.get('/ping', async function (req, res) {
+  return res.status(200).send('Pong!');
+})
+
 app.get('/cronTask', async function (req, res) {
   await makeEvent();
   return res.status(200).send('Cron task triggered successfully!');
