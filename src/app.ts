@@ -4,15 +4,12 @@ import {
   InteractionType,
   InteractionResponseType,
   MessageComponentTypes,
-  ButtonStyleTypes,
-  verifyKeyMiddleware
+  ButtonStyleTypes
 } from 'discord-interactions';
 import { VerifyDiscordRequest, getRandomEmoji, DiscordRequest } from './utils.js';
 // import './cron.js'; // Import the cron job
 import './messageWithButtons.js'; 
 import { makeEvent, processButton } from './messageWithButtons.js';
-import axios from 'axios';
-
 
 // Type for active games
 interface ActiveGame {
@@ -42,8 +39,12 @@ app.get('/cronTask', async function (req, res) {
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  */
-app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY as string), async function (req, res) {
+app.post('/interactions', async function (req, res) {
+  console.log("POOOP");
   // Interaction type and data
+  if(!req.body){
+    return res.send({ type: InteractionResponseType.PONG });
+  }
   const { type, id, data, token, message } = req.body;
 
 
@@ -107,6 +108,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY as string),
     }
   }
   if(type === InteractionType.MESSAGE_COMPONENT) {
+    console.log("wetawetawet");
     await processButton(req.body.member.user.id, data.custom_id, message.id);
     
     // const copiedToken = 'Jze4KiOKW4mIz-NBbRxzFVMa1SWshYalFYC0YolZreAiAnGZEws5y1BwQfHIhIoFvSV2';

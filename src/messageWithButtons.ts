@@ -39,61 +39,33 @@ const choices: Choice = {
     
 // });
 
-export async function makeEvent() {
-    await client.login(process.env.DISCORD_TOKEN);
-    if(client.channels.cache.get(CHANNEL_ID)) {
-        console.log("rerrer");
-        console.log(!!client)
-        // Post the initial message with buttons
-        const channel = client.channels.cache.get(CHANNEL_ID);
-        console.log("GOT HERE");
-        console.log(!!channel);
-        console.log(!!client.channels);
-        console.log(!!client.channels.cache);
-        console.log(CHANNEL_ID);
-        if (channel && channel.isTextBased()) {
-            console.log("Banana");
-            await channel.send({
-                content: 'Choose your favorite:',
-                components: [createActionRow()]
-            });
-            console.log("WHYYYYYYY");
-        }
-        return true;
-    }
-    const waitForReady = new Promise<void>(resolve => {
-        client.on('ready', () => {
-            console.log("SDFSDF");
-            resolve(); // Resolve the promise when 'ready' event occurs
-        });
-    });
-    console.log("hsdasdgh");
-    
-    // Wait for both client.login() and 'ready' event
-    await waitForReady;
-
-    console.log("rerrer");
-    console.log(!!client)
+async function sendPrompt() {
     // Post the initial message with buttons
     const channel = client.channels.cache.get(CHANNEL_ID);
-    console.log("GOT HERE");
-    console.log(!!channel);
-    console.log(!!client.channels);
-    console.log(!!client.channels.cache);
-    console.log(CHANNEL_ID);
     if (channel && channel.isTextBased()) {
-        console.log("Banana");
         await channel.send({
             content: 'Choose your favorite:',
             components: [createActionRow()]
         });
-        console.log("WHYYYYYYY");
     }
     return true;
-    
 }
 
-export async function processButton(username: string, choice: keyof Choice, messageId: string) {
+export async function makeEvent() {
+    await client.login(process.env.DISCORD_TOKEN);
+    if(client.channels.cache.get(CHANNEL_ID)) {
+        return sendPrompt();
+    }
+    const waitForReady = new Promise<void>(resolve => {
+        client.on('ready', () => {
+            resolve(); // Resolve the promise when 'ready' event occurs
+        });
+    });
+    await waitForReady;
+    return sendPrompt();
+}
+
+async function doProcessButton(username: string, choice: keyof Choice, messageId: string) {
     // Remove user from all choices
     for (const key in choices) {
         const index = choices[key as keyof Choice].indexOf(username);
@@ -106,6 +78,7 @@ export async function processButton(username: string, choice: keyof Choice, mess
     const embed = generateEmbed();
 
     const channel = client.channels.cache.get(CHANNEL_ID);
+    console.log(!!channel)
     if (channel && channel.isTextBased()) {
         try {
             const fetchedMessage = await channel.messages.fetch(messageId);
@@ -120,6 +93,23 @@ export async function processButton(username: string, choice: keyof Choice, mess
             channel.send('Error deleting message.');
         }
     }
+}
+
+export async function processButton(username: string, choice: keyof Choice, messageId: string) {
+    await client.login(process.env.DISCORD_TOKEN);
+    if(client.channels.cache.get(CHANNEL_ID)) {
+        console.log("I AM HEREEEEEEE")
+        return doProcessButton(username, choice, messageId);
+    }
+    const waitForReady = new Promise<void>(resolve => {
+        client.on('ready', () => {
+            resolve(); // Resolve the promise when 'ready' event occurs
+        });
+    });
+    console.log("banana")
+    await waitForReady;
+    console.log("cheese")
+    return doProcessButton(username, choice, messageId);
 }
 
 function createActionRow() {
