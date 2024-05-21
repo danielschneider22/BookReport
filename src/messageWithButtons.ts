@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, EmbedBuilder, ButtonInteraction } from 'discord.js';
 import { config } from 'dotenv';
-import cron from 'node-cron';
+import { Database } from 'firebase-admin/lib/database/database';
+
 config();
 
 const client = new Client({
@@ -20,11 +21,6 @@ interface Choice {
     declined: string[];
 }
 
-const choices: Choice = {
-    friday: [],
-    saturday: [],
-    declined: [],
-};
 
 // client.once(Events.ClientReady, () => {
 //     // cron.schedule(
@@ -69,18 +65,32 @@ export async function makeEvent() {
     return sendPrompt();
 }
 
-async function doProcessButton(username: string, choice: keyof Choice, messageId: string) {
-    // Remove user from all choices
-    for (const key in choices) {
+async function doProcessButton(username: string, choice: keyof Choice, messageId: string, db: Database) {
+    let choices: Choice = {
+        friday: [],
+        saturday: [],
+        declined: [],
+    };
+    
+    const snapshot = await db.ref(`/eventData/${messageId}`).once('value')
+    if(snapshot.val() && Object.keys(snapshot.val()))
+        choices = snapshot.val();
+
+    ["friday", "saturday", "declined"].forEach((key) => {
+        if(!choices[key as keyof Choice]) {
+            choices[key as keyof Choice] = [];
+        }
         const index = choices[key as keyof Choice].indexOf(username);
         if(index !== -1 && ((choice === key) || (choice === "declined" && key !== "declined")  || (choice !== "declined" && key === "declined"))) {
             choices[key as keyof Choice].splice(index, 1);
         } else if (index === -1 && choice === key) {
             choices[choice].push(username);
         }
-    }
+    })
 
-    const embed = generateEmbed();
+    await db.ref(`/eventData/${messageId}`).set(choices)
+
+    const embed = generateEmbed(choices, messageId);
 
     const channel = client.channels.cache.get(CHANNEL_ID);
     if (channel && channel.isTextBased()) {
@@ -99,12 +109,12 @@ async function doProcessButton(username: string, choice: keyof Choice, messageId
     }
 }
 
-export async function processButton(username: string, choice: keyof Choice, messageId: string) {
+export async function processButton(username: string, choice: keyof Choice, messageId: string, db: Database) {
     if(!client.readyTimestamp) {
         await client.login(process.env.DISCORD_TOKEN);
     }
     if(client.channels.cache.get(CHANNEL_ID)) {
-        return doProcessButton(username, choice, messageId);
+        return doProcessButton(username, choice, messageId, db);
     }
     const waitForReady = new Promise<void>(resolve => {
         client.on('ready', () => {
@@ -112,7 +122,7 @@ export async function processButton(username: string, choice: keyof Choice, mess
         });
     });
     await waitForReady;
-    return doProcessButton(username, choice, messageId);
+    return doProcessButton(username, choice, messageId, db);
 }
 
 function createActionRow() {
@@ -133,18 +143,31 @@ function createActionRow() {
         );
 }
 
-function generateEmbed() {
-    const fridayUsers = choices.friday.map(userId => `<@${userId}>`).join('\n') || 'None';
-    const saturdayUsers = choices.saturday.map(userId => `<@${userId}>`).join('\n') || 'None';
-    const declinedUsers = choices.declined.map(userId => `<@${userId}>`).join('\n') || 'None';
-
-    return new EmbedBuilder()
-        .setTitle('Choose one or more dates:')
-        .addFields(
-            { name: 'Friday (' + choices.friday.length + ")", value: fridayUsers, inline: false },
-            { name: 'Saturday (' + choices.saturday.length + ")", value: saturdayUsers, inline: false },
-            { name: 'Declined (' + choices.declined.length + ")", value: declinedUsers, inline: false }
-        )
-        .setColor(0x00AE86)
-        .setImage("https://images.pling.com/img/00/00/11/74/84/1108370/104822-1.png")
+function generateEmbed(choices?: Choice, messageId?: string) {
+    if(choices && messageId) {
+        const fridayUsers = choices.friday?.length ? choices.friday.map(userId => `<@${userId}>`).join('\n') : 'None';
+        const saturdayUsers = choices.saturday?.length ? choices.saturday.map(userId => `<@${userId}>`).join('\n') : 'None';
+        const declinedUsers = choices.declined?.length ? choices.declined.map(userId => `<@${userId}>`).join('\n') : 'None';
+    
+        return new EmbedBuilder()
+            .setTitle('Choose one or more dates:')
+            .addFields(
+                { name: 'Friday (' + (choices.friday?.length || "0") + ")", value: fridayUsers, inline: false },
+                { name: 'Saturday (' + (choices.saturday?.length || "0") + ")", value: saturdayUsers, inline: false },
+                { name: 'Declined (' + (choices.declined?.length || "0") + ")", value: declinedUsers, inline: false }
+            )
+            .setColor(0x00AE86)
+            .setImage("https://images.pling.com/img/00/00/11/74/84/1108370/104822-1.png")
+    } else {
+        return new EmbedBuilder()
+            .setTitle('Choose one or more dates:')
+            .addFields(
+                { name: 'Friday (0)', value: "None", inline: false },
+                { name: 'Saturday (0)', value: "None", inline: false },
+                { name: 'Declined (0)', value: "None", inline: false }
+            )
+            .setColor(0x00AE86)
+            .setImage("https://images.pling.com/img/00/00/11/74/84/1108370/104822-1.png")
+    }
+    
 }

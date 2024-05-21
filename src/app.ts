@@ -7,15 +7,10 @@ import {
   ButtonStyleTypes
 } from 'discord-interactions';
 import { VerifyDiscordRequest, getRandomEmoji, DiscordRequest } from './utils.js';
-// import './cron.js'; // Import the cron job
 import './messageWithButtons.js'; 
 import { makeEvent, processButton } from './messageWithButtons.js';
-
-// Type for active games
-interface ActiveGame {
-  id: string;
-  objectName: string;
-}
+import admin from 'firebase-admin';
+import { firebaseConfig } from './firebaseConfig.js';
 
 // Create an express app
 const app = express();
@@ -24,10 +19,24 @@ const PORT = process.env.PORT || 3000;
 // Parse request body and verifies incoming requests using discord-interactions package
 app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY as string) }));
 
-// Store for in-progress games. In production, you'd want to use a DB
-const activeGames: Record<string, ActiveGame> = {};
+admin.initializeApp({
+    credential: admin.credential.cert(firebaseConfig),
+    databaseURL: "https://discordeventtracker-default-rtdb.firebaseio.com"
+});
+
+const db = admin.database();
 
 app.get('/ping', async function (req, res) {
+  const myData = { "hello": "world" };
+
+  // Write data to Firebase Realtime Database
+  db.ref('/data').set(myData)
+      .then(() => {
+          console.log('Data set successfully');
+      })
+      .catch((error) => {
+          console.error('Error setting data:', error);
+      });
   return res.status(200).send('Pong!');
 })
 
@@ -63,57 +72,17 @@ app.post('/interactions', async function (req, res) {
 
     // "test" command
     if (name === 'test' || name === "test2") {
-      // Send a message into the channel where command was triggered from
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          // Fetches a random emoji to send from a helper function
           content: 'hello world poopface llama dragon ' + getRandomEmoji(),
         },
       });
     }
-    // "challenge" command
-    if (name === 'challenge' && id) {
-      const userId = req.body.member.user.id;
-      // User's object choice
-      const objectName = req.body.data.options[0].value;
 
-      // Create active game using message ID as the game ID
-      activeGames[id] = {
-        id: userId,
-        objectName,
-      };
-
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `Rock papers scissors challenge from poopface llama <@${userId}>`,
-          components: [
-            {
-              type: MessageComponentTypes.ACTION_ROW,
-              components: [
-                {
-                  type: MessageComponentTypes.BUTTON,
-                  // Append the game ID to use later on
-                  custom_id: `accept_button_${req.body.id}`,
-                  label: 'Accept LOL',
-                  style: ButtonStyleTypes.PRIMARY,
-                },
-              ],
-            },
-          ],
-        },
-      });
-    }
   }
   if(type === InteractionType.MESSAGE_COMPONENT) {
-    await processButton(req.body.member.user.id, data.custom_id, message.id);
-    
-    // const copiedToken = 'Jze4KiOKW4mIz-NBbRxzFVMa1SWshYalFYC0YolZreAiAnGZEws5y1BwQfHIhIoFvSV2';
-    // // const endpoint = `webhooks/${process.env.APP_ID}/${copiedToken}/messages/${message.id}`;
-    // const endpoint = `webhooks/${process.env.APP_ID}/${copiedToken}/messages/${message.id}`
-    // await DiscordRequest(endpoint, { method: 'DELETE' });
-    // // const response = await axios.delete(`https://discord.com/api/webhooks/${webhookId}/${webhookToken}/messages/${messageId}`);
+    await processButton(req.body.member.user.id, data.custom_id, message.id, db);
     return res.status(200).json({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
