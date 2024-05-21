@@ -94,7 +94,7 @@ async function doProcessButton(username: string, choice: keyof Choice, messageId
             }
         } catch (error) {
             console.error('Error deleting message:', error);
-            channel.send('Error deleting message.');
+            channel.send('Error deleting message.'); 
         }
     }
 }
