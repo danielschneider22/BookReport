@@ -15,13 +15,15 @@ const CHANNEL_ID = process.env.CHANNEL_ID as string; // Add your channel ID to .
 const TIMEZONE = 'UTC'; // Add your timezone to .env
 
 interface Choice {
-    kangaroo: string[];
-    fish: string[];
+    friday: string[];
+    saturday: string[];
+    declined: string[];
 }
 
 const choices: Choice = {
-    kangaroo: [],
-    fish: [],
+    friday: [],
+    saturday: [],
+    declined: [],
 };
 
 // client.once(Events.ClientReady, () => {
@@ -43,9 +45,11 @@ async function sendPrompt() {
     // Post the initial message with buttons
     const channel = client.channels.cache.get(CHANNEL_ID);
     if (channel && channel.isTextBased()) {
+        const embed = generateEmbed();
         await channel.send({
-            content: 'Choose your favorite:',
-            components: [createActionRow()]
+            content: 'Weekly Magic the Gathering!',
+            components: [createActionRow()],
+            embeds: [embed]
         });
     }
     return true;
@@ -69,16 +73,16 @@ async function doProcessButton(username: string, choice: keyof Choice, messageId
     // Remove user from all choices
     for (const key in choices) {
         const index = choices[key as keyof Choice].indexOf(username);
-        if (index !== -1) choices[key as keyof Choice].splice(index, 1);
+        if(index !== -1 && ((choice === key) || (choice === "declined" && key !== "declined")  || (choice !== "declined" && key === "declined"))) {
+            choices[key as keyof Choice].splice(index, 1);
+        } else if (index === -1 && choice === key) {
+            choices[choice].push(username);
+        }
     }
-
-    // Add user to the selected choice
-    choices[choice].push(username);
 
     const embed = generateEmbed();
 
     const channel = client.channels.cache.get(CHANNEL_ID);
-    console.log(!!channel)
     if (channel && channel.isTextBased()) {
         try {
             const fetchedMessage = await channel.messages.fetch(messageId);
@@ -96,9 +100,10 @@ async function doProcessButton(username: string, choice: keyof Choice, messageId
 }
 
 export async function processButton(username: string, choice: keyof Choice, messageId: string) {
-    await client.login(process.env.DISCORD_TOKEN);
+    if(!client.readyTimestamp) {
+        await client.login(process.env.DISCORD_TOKEN);
+    }
     if(client.channels.cache.get(CHANNEL_ID)) {
-        console.log("I AM HEREEEEEEE")
         return doProcessButton(username, choice, messageId);
     }
     const waitForReady = new Promise<void>(resolve => {
@@ -106,9 +111,7 @@ export async function processButton(username: string, choice: keyof Choice, mess
             resolve(); // Resolve the promise when 'ready' event occurs
         });
     });
-    console.log("banana")
     await waitForReady;
-    console.log("cheese")
     return doProcessButton(username, choice, messageId);
 }
 
@@ -116,25 +119,32 @@ function createActionRow() {
     return new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
             new ButtonBuilder()
-                .setCustomId('kangaroo')
-                .setLabel('Kangaroo')
+                .setCustomId('friday')
+                .setLabel('Friday 6:30pm')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
-                .setCustomId('fish')
-                .setLabel('Fish')
-                .setStyle(ButtonStyle.Primary)
+                .setCustomId('saturday')
+                .setLabel('Saturday 11am')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('declined')
+                .setLabel('Declined')
+                .setStyle(ButtonStyle.Danger),
         );
 }
 
 function generateEmbed() {
-    const kangarooUsers = choices.kangaroo.map(userId => `<@${userId}>`).join('\n') || 'None';
-    const fishUsers = choices.fish.map(userId => `<@${userId}>`).join('\n') || 'None';
+    const fridayUsers = choices.friday.map(userId => `<@${userId}>`).join('\n') || 'None';
+    const saturdayUsers = choices.saturday.map(userId => `<@${userId}>`).join('\n') || 'None';
+    const declinedUsers = choices.declined.map(userId => `<@${userId}>`).join('\n') || 'None';
 
     return new EmbedBuilder()
-        .setTitle('Current Choices')
+        .setTitle('Choose one or more dates:')
         .addFields(
-            { name: 'Kangaroo', value: kangarooUsers, inline: true },
-            { name: 'Fish', value: fishUsers, inline: true }
+            { name: 'Friday (' + choices.friday.length + ")", value: fridayUsers, inline: false },
+            { name: 'Saturday (' + choices.saturday.length + ")", value: saturdayUsers, inline: false },
+            { name: 'Declined (' + choices.declined.length + ")", value: declinedUsers, inline: false }
         )
-        .setColor(0x00AE86);
+        .setColor(0x00AE86)
+        .setImage("https://images.pling.com/img/00/00/11/74/84/1108370/104822-1.png")
 }

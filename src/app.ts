@@ -40,7 +40,6 @@ app.get('/cronTask', async function (req, res) {
  * Interactions endpoint URL where Discord will send HTTP requests
  */
 app.post('/interactions', async function (req, res) {
-  console.log("POOOP");
   // Interaction type and data
   if(!req.body){
     return res.send({ type: InteractionResponseType.PONG });
@@ -108,7 +107,6 @@ app.post('/interactions', async function (req, res) {
     }
   }
   if(type === InteractionType.MESSAGE_COMPONENT) {
-    console.log("wetawetawet");
     await processButton(req.body.member.user.id, data.custom_id, message.id);
     
     // const copiedToken = 'Jze4KiOKW4mIz-NBbRxzFVMa1SWshYalFYC0YolZreAiAnGZEws5y1BwQfHIhIoFvSV2';
