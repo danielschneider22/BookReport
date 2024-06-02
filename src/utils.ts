@@ -26,7 +26,6 @@ export async function DiscordRequest(endpoint: string, options: RequestOptions) 
   // append endpoint to root API URL
   const url = 'https://discord.com/api/v10/' + endpoint;
   // Stringify payloads
-  if (options.body) options.body = JSON.stringify(options.body);
   // Use node-fetch to make requests
   const res = await fetch(url, {
     headers: {
@@ -50,6 +49,7 @@ export async function InstallGlobalCommands(appId: string, commands: any[]) {
   const endpoint = `applications/${appId}/commands`;
 
   try {
+    console.log("DSFSDF");
     // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
     await DiscordRequest(endpoint, { method: 'PUT', body: JSON.stringify(commands) });
   } catch (err) {
