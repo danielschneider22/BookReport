@@ -32,7 +32,7 @@ app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY as st
 
 admin.initializeApp({
     credential: admin.credential.cert(firebaseConfig),
-    databaseURL: "https://discordeventtracker-default-rtdb.firebaseio.com"
+    databaseURL: "https://bookreports-default-rtdb.firebaseio.com"
 });
 
 const db = admin.database();
@@ -51,14 +51,7 @@ app.get('/ping', async function (req, res) {
   return res.status(200).send('Pong!');
 })
 
-app.get('/cronTask', async function (req, res) {
-  await makeEvent();
-  return res.status(200).send('Cron task triggered successfully!');
-})
 
-/**
- * Interactions endpoint URL where Discord will send HTTP requests
- */
 app.post('/interactions', async function (req, res) {
   const interaction = req.body;
 
@@ -105,6 +98,7 @@ app.post('/interactions', async function (req, res) {
       if (interaction.type === InteractionType.MODAL_SUBMIT) {
         const bookTitle = interaction.data.components[0].components[0].value;
           const book = await searchBook(bookTitle);
+          sendBookReview(bookTitle, interaction.data.components[1].components[0].value, interaction.member.user.username, book)
           const content = `New book review from ${interaction.member.user.username}!`
           if(book) {
             return res.send({
@@ -139,19 +133,25 @@ app.post('/interactions', async function (req, res) {
       }
     });
 
-app.listen(PORT, () => {
-  // const bookTitle = 'Red rising'; // Replace with your desired book title
-  // searchBook(bookTitle)
-  //     .then(book => {
-  //         if (book) {
-  //             console.log(`Author: ${book.author}`);
-  //             console.log(`Genre: ${book.genre}`);
-  //             console.log(`Image URL: ${book.imageUrl}`);
-  //         } else {
-  //             console.log('Book not found.');
-  //         }
-  //     })
-  //     .catch(err => console.error('Error searching for book:', err));
+    function sendBookReview(bookTitle: string, rating: number, username: string, book?: any) {
+      const bookReview = { 
+        title: book?.title || bookTitle,
+        typedTitle: bookTitle,
+        author: book?.author,
+        genre: book?.genre,
+        rating,
+        image: book?.imageUrl,
+        date: new Date()
+      };
+      db.ref(`/bookreviews/${username}`).set(bookReview)
+        .then(() => {
+            console.log('Data set successfully');
+        })
+        .catch((error) => {
+            console.error('Error setting data:', error);
+        });
+    }
 
+app.listen(PORT, () => {
   console.log('Listening on port', PORT);
 });

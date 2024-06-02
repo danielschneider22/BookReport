@@ -16,7 +16,6 @@ export async function searchBook(title: string) {
             throw new Error('Book not found');
         }
 
-        console.log(book);
         const bookTitle = book?.volumeInfo?.title || title;
         const author = book.volumeInfo.authors ? book.volumeInfo.authors.join(', ') : 'Unknown Author';
         const genre = book.volumeInfo.categories ? book.volumeInfo.categories.join(', ') : 'Unknown Genre';
