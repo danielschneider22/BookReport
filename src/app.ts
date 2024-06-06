@@ -3,24 +3,13 @@ import express from 'express';
 import {
   InteractionType,
   InteractionResponseType,
-  MessageComponentTypes,
-  ButtonStyleTypes
 } from 'discord-interactions';
-import { VerifyDiscordRequest, getRandomEmoji, DiscordRequest } from './utils.js';
+import { VerifyDiscordRequest } from './utils.js';
 import './messageWithButtons.js'; 
-import admin from 'firebase-admin';
-import { firebaseConfig } from './firebaseConfig.js';
+import { getFirebaseAdmin } from './firebaseConfig.js';
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder } from '@discordjs/builders';
-import { Client, GatewayIntentBits, TextChannel, ButtonBuilder, ButtonStyle, TextInputStyle, ModalActionRowComponentBuilder, EmbedBuilder } from 'discord.js';
+import { TextInputStyle, ModalActionRowComponentBuilder, EmbedBuilder } from 'discord.js';
 import { searchBook } from './findBook.js';
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
-
 
 // Create an express app
 const app = express();
@@ -29,11 +18,7 @@ const PORT = process.env.PORT || 3000;
 // Parse request body and verifies incoming requests using discord-interactions package
 app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY as string) }));
 
-admin.initializeApp({
-    credential: admin.credential.cert(firebaseConfig),
-    databaseURL: "https://bookreports-default-rtdb.firebaseio.com"
-});
-
+const admin = getFirebaseAdmin();
 const db = admin.database();
 
 app.get('/ping', async function (req, res) {
