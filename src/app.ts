@@ -8,7 +8,6 @@ import {
 } from 'discord-interactions';
 import { VerifyDiscordRequest, getRandomEmoji, DiscordRequest } from './utils.js';
 import './messageWithButtons.js'; 
-import { makeEvent, processButton } from './messageWithButtons.js';
 import admin from 'firebase-admin';
 import { firebaseConfig } from './firebaseConfig.js';
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder } from '@discordjs/builders';
@@ -41,21 +40,39 @@ app.get('/ping', async function (req, res) {
   const myData = { "hello": "world" };
 
   // Write data to Firebase Realtime Database
-  db.ref('/data').set(myData)
-      .then(() => {
-          console.log('Data set successfully');
-      })
-      .catch((error) => {
-          console.error('Error setting data:', error);
-      });
-  return res.status(200).send('Pong!');
+  await db.ref('/data').set(myData)
+  return res.status(200).send('Pong2 edddd!');
 })
 
 
 app.post('/interactions', async function (req, res) {
+  if(!req.body || Object.keys(req.body).length === 0){
+    return res.send({ type: InteractionResponseType.PONG });
+  }
+  const { type } = req.body;
+  if (type === InteractionType.PING) {
+    return res.send({ type: InteractionResponseType.PONG });
+  }
+
   const interaction = req.body;
 
     if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+        if (interaction.data.name === 'mybookreports') {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `View your book reports here: https://book-report-site.vercel.app/?username=${interaction.member.user.username}`,
+            },
+          });
+        }
+        if (interaction.data.name === 'allbookreports') {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `View all book reports here: https://book-report-site.vercel.app`,
+            },
+          });
+        }
         if (interaction.data.name === 'bookreport') {
             const modal = new ModalBuilder()
                 .setCustomId('book-title-modal')
@@ -73,7 +90,7 @@ app.post('/interactions', async function (req, res) {
 
             const rating = new TextInputBuilder()
               .setCustomId('rating')
-              .setLabel("Rating (0-10)")
+              .setLabel("Stars (0-5)")
               .setStyle(TextInputStyle.Short);
 
             const review = new TextInputBuilder()
@@ -98,8 +115,23 @@ app.post('/interactions', async function (req, res) {
       if (interaction.type === InteractionType.MODAL_SUBMIT) {
         const bookTitle = interaction.data.components[0].components[0].value;
           const book = await searchBook(bookTitle);
-          sendBookReview(bookTitle, interaction.data.components[1].components[0].value, interaction.member.user.username, book)
-          const content = `New book review from ${interaction.member.user.username}!`
+          let rating = Number(interaction.data.components[1].components[0].value);
+          const review = interaction.data.components[2].components[0].value;
+          sendBookReview(bookTitle, rating, interaction.member.user.username, review, book)
+          const content = `:book: from **${interaction.member.user.username}**!\n\n See all book reports here: https://book-report-site.vercel.app`
+          function getStars(rating: number): string {
+            const fullStars = Math.floor(rating);
+            const customStarId = "<:customstar:1247389728702205976>"
+            const customHalfStarId =  "<:halfstar:1247389728094031923>"
+            const halfStar = rating % 1 >= 0.5 ? customHalfStarId : '';
+            
+            return customStarId.repeat(fullStars) + halfStar;
+          }
+          if(rating > 5) {
+            rating = rating / 2;
+          }
+          const starsText = getStars(rating)
+
           if(book) {
             return res.send({
               type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -108,7 +140,7 @@ app.post('/interactions', async function (req, res) {
                 embeds: [
                   {
                       title: `${book.title} by ${book.author}`,
-                      description: `${interaction.data.components[2].components[0].value}\n\n**Rating: ${interaction.data.components[1].components[0].value}/10**\n\nReviewed by ${interaction.member.user.username}`,
+                      description: `**${starsText}**\n\n${review}`,
                       image: {
                           url: book.imageUrl,
                       },
@@ -124,7 +156,7 @@ app.post('/interactions', async function (req, res) {
                 embeds: [
                   {
                       title: bookTitle,
-                      description: `**${interaction.data.components[2].components[0].value}\n\n Reviewed by ${interaction.member.user.username}**`,
+                      description: `**${starsText}**\n\n**${review}`,
                   },
                 ]
               },
@@ -133,7 +165,7 @@ app.post('/interactions', async function (req, res) {
       }
     });
 
-    function sendBookReview(bookTitle: string, rating: number, username: string, book?: any) {
+    function sendBookReview(bookTitle: string, rating: number, username: string, review: string, book?: any) {
       const bookReview = { 
         title: book?.title || bookTitle,
         typedTitle: bookTitle,
@@ -141,9 +173,11 @@ app.post('/interactions', async function (req, res) {
         genre: book?.genre,
         rating,
         image: book?.imageUrl,
-        date: new Date()
+        date: new Date().getTime(),
+        username,
+        review
       };
-      db.ref(`/bookreviews/${username}`).set(bookReview)
+      db.ref(`/bookreviews/${username}/${book?.title || bookTitle}`).set(bookReview)
         .then(() => {
             console.log('Data set successfully');
         })

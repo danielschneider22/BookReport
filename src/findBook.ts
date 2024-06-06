@@ -20,7 +20,7 @@ export async function searchBook(title: string) {
         const author = book.volumeInfo.authors ? book.volumeInfo.authors.join(', ') : 'Unknown Author';
         const genre = book.volumeInfo.categories ? book.volumeInfo.categories.join(', ') : 'Unknown Genre';
         const imageUrl = book.volumeInfo.imageLinks ? book.volumeInfo.imageLinks.thumbnail : '';
-
+        console.log(book.volumeInfo);
         return { author, genre, imageUrl, title: bookTitle };
     } catch (error: any) {
         console.error('Error fetching book:', error.message);

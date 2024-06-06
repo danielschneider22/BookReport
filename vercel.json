@@ -11,11 +11,5 @@
         "src": "/(.*)",
         "dest": "dist/app.js"
       }
-    ],
-    "crons": [
-        {
-            "path": "/cronTask",
-            "schedule": "00 15 * * 1"
-        }
     ]
   }
